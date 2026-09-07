@@ -3,32 +3,45 @@ using UnityEngine;
 public class ItemController : MonoBehaviour
 {
     public bool isMoveFollow = false;
-    public GameObject parent; // Kéo Cái Móc (a_0) vào ô này
-    
-    [Header("Speed Setting")]
-    public float pullSpeed = 2f; // Tốc độ kéo riêng cho vật phẩm này
+    public GameObject parent; // Ô kéo cái Móc (1_0 hoặc a_0) vào Inspector
     
     private HookController hookController;
+    private Item itemScript;
+    private bool isScored = false;
 
     void Start()
     {
         isMoveFollow = false;
         hookController = FindObjectOfType<HookController>();
+        itemScript = GetComponent<Item>();
     }
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
+        if (parent == null) return;
+
+        // Va chạm với móc hoặc con của móc
         if (collision.gameObject == parent || collision.transform.parent == parent.transform)
         {
-            isMoveFollow = true;
-
-            if (hookController != null)
+            if (!isMoveFollow)
             {
-                hookController.isDropping = false;
-                hookController.isPulling = true;
-                
-                // Đổi tốc độ kéo của móc bằng tốc độ của vật phẩm này
-                hookController.pullSpeed = pullSpeed;
+                isMoveFollow = true;
+
+                if (hookController != null)
+                {
+                    hookController.isDropping = false;
+                    hookController.isPulling = true;
+                    
+                    // Đổi tốc độ kéo của móc dựa trên thuộc tính của Item
+                    if (itemScript != null)
+                    {
+                        hookController.pullSpeed = itemScript.pullSpeed;
+                    }
+                }
+
+                // Tắt Collider để vật không bị vướng các đồ khác khi đang kéo về
+                Collider2D col = GetComponent<Collider2D>();
+                if (col != null) col.enabled = false;
             }
         }
     }
@@ -39,9 +52,28 @@ public class ItemController : MonoBehaviour
         {
             MoveFollow(parent);
 
+            // Khi móc đã kéo về vị trí ban đầu (isRotate = true)
             if (hookController != null && hookController.isRotate)
             {
-                Destroy(gameObject);
+                if (!isScored)
+                {
+                    isScored = true;
+                    // CỘNG ĐIỂM VÀO BẢNG
+                    if (itemScript != null)
+                    {
+                        FindObjectOfType<GameManager>()?.AddScore(itemScript.scoreValue);
+                    }
+                    else
+                    {
+                        FindObjectOfType<GameManager>()?.AddScore(5); // Điểm mặc định
+                    }
+
+                    // Reset lại tốc độ kéo ban đầu cho móc
+                    hookController.ResetPullSpeed();
+
+                    // Xoá vật phẩm
+                    Destroy(gameObject);
+                }
             }
         }
     }

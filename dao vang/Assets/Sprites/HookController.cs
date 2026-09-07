@@ -13,6 +13,7 @@ public class HookController : MonoBehaviour
     // Biến điều khiển thả và kéo móc
     public float dropSpeed = 5f;
     public float pullSpeed = 5f;
+    private float defaultPullSpeed; // Tốc độ kéo mặc định
     public bool isDropping = false;
     public bool isPulling = false;
 
@@ -21,7 +22,7 @@ public class HookController : MonoBehaviour
     public float maxX = 8f;
     public float minY = -4.5f;
 
-    // Vị trí ban đầu và LineRenderer vẽ dây
+    // Vị trí ban đầu và LineRenderer
     public Vector3 initialPosition;
     private LineRenderer lineRenderer;
 
@@ -30,11 +31,16 @@ public class HookController : MonoBehaviour
         isRotate = true;
         initialPosition = transform.position;
         lineRenderer = GetComponent<LineRenderer>();
+        defaultPullSpeed = pullSpeed;
     }
 
     void Update()
     {
-        // 1. Cập nhật đường vẽ sợi dây từ vị trí ban đầu đến vị trí hiện tại của móc
+        // KHÔNG CHO THAO TÁC NẾU ĐÃ HẾT 2 PHÚT
+        GameManager gm = FindObjectOfType<GameManager>();
+        if (gm != null && gm.isGameOver) return;
+
+        // 1. Cập nhật đường vẽ sợi dây
         if (lineRenderer != null)
         {
             lineRenderer.SetPosition(0, initialPosition);
@@ -45,7 +51,7 @@ public class HookController : MonoBehaviour
         if (isRotate)
         {
             RotationZ();
-            if (Input.GetMouseButtonDown(0))
+            if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Space))
             {
                 isRotate = false;
                 isDropping = true;
@@ -77,10 +83,8 @@ public class HookController : MonoBehaviour
     {
         if (isDropping)
         {
-            // Móc di chuyển xuống dưới
             transform.Translate(Vector3.down * dropSpeed * Time.deltaTime);
 
-            // Kiểm tra nếu chạm giới hạn biên trái, phải hoặc dưới thì bắt đầu kéo về
             if (transform.position.x <= minX || transform.position.x >= maxX || transform.position.y <= minY)
             {
                 isDropping = false;
@@ -89,16 +93,20 @@ public class HookController : MonoBehaviour
         }
         else if (isPulling)
         {
-            // Kéo móc về vị trí ban đầu
             transform.position = Vector3.MoveTowards(transform.position, initialPosition, pullSpeed * Time.deltaTime);
 
-            // Khi khoảng cách gần về vị trí ban đầu (< 0.1) thì đặt hẳn về gốc và lắc tiếp
             if (Vector3.Distance(transform.position, initialPosition) < 0.1f)
             {
                 transform.position = initialPosition;
                 isPulling = false;
                 isRotate = true;
+                ResetPullSpeed();
             }
         }
+    }
+
+    public void ResetPullSpeed()
+    {
+        pullSpeed = defaultPullSpeed;
     }
 }
